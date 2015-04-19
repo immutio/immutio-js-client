@@ -1,16 +1,18 @@
 var Immutio = require('../index');
 var im = new Immutio();
+var assert = require('assert');
+
 var multilineStr = "my sample string\n" + "with multiple lines.";
 
 im.store(multilineStr, function (err, id) {
   if(err) throw err;
 
-  console.log(multilineStr, "stored as", id);
+  assert(id);
 
   im.retrieve(id, function (err, retrievedStr) {
     if(err) throw err;
 
-    console.log(id, "retrieved", retrievedStr);
+    assert.equal(retrievedStr, multilineStr);
   });
 });
 
@@ -21,12 +23,12 @@ var json = {
 im.store(json, function (err, id) {
   if(err) throw err;
 
-  console.log(json, "stored as", id);
+  assert(id);
 
   im.retrieve(id, function (err, retrievedObj) {
     if(err) throw err;
 
-    console.log(id, "retrieved", JSON.parse(retrievedObj));
+    assert.deepEqual(JSON.parse(retrievedObj), json);
   });
 });
 
@@ -35,11 +37,11 @@ var buf = new Buffer("A simple string");
 im.store(buf, function (err, id) {
   if(err) throw err;
 
-  console.log(buf, "stored as", id);
+  assert(id);
 
   im.retrieve(id, function (err, retrievedBuf) {
     if(err) throw err;
 
-    console.log(id, "retrieved", new Buffer(retrievedBuf));
+    assert.deepEqual(new Buffer(retrievedBuf), buf);
   });
 });
