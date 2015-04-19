@@ -1,12 +1,12 @@
 {
-  "name": "node-immut.io-client",
+  "name": "immutio-client",
   "version": "0.0.1",
-  "description": "Node.js Client for immut.io",
+  "description": "Client for immut.io",
   "main": "index.js",
   "scripts": {
     "test": "node test"
   },
-  "author": "",
+  "author": "Trey Griffith <trey@tgriff3.com>",
   "license": "MIT",
   "dependencies": {
     "merge": "^1.2.0",
