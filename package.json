@@ -10,7 +10,8 @@
     "build-tests": "browserify test/index.js > test/browser.js",
     "build-browserify": "browserify index.js --standalone Immutio > dist/immutio.js",
     "build-uglify": "uglifyjs dist/immutio.js > dist/immutio.min.js",
-    "build": "npm run clean && npm run test && npm run build-browserify && npm run build-uglify"
+    "build": "npm run clean && npm run test && npm run build-browserify && npm run build-uglify",
+    "publish-blob": "node bin/publish_blob"
   },
   "author": {
     "name": "Trey Griffith",

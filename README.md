@@ -8,6 +8,15 @@ See [immut.io](http://immut.io) for more information.
 Installation
 ------------
 
+With pre-published Blob:
+
+```
+<script type="text/javascript" src="http://immut.io/blobs/1c5e3e92-34ac-49ac-aa16-2fd79e32c6c1"></script>
+<script>
+  var im = new Immutio();
+</script>
+```
+
 With npm:
 
 ```
