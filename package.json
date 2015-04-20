@@ -1,15 +1,48 @@
 {
   "name": "immutio-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Client for immut.io",
+  "homepage": "https://github.com/immutio/immutio-js-client",
   "main": "index.js",
   "scripts": {
-    "test": "node test"
+    "test": "node test",
+    "clean": "rm -f dist/immutio.js && rm -f dist/immutio.min.js",
+    "build-tests": "browserify test/index.js > test/browser.js",
+    "build-browserify": "browserify index.js --standalone Immutio > dist/immutio.js",
+    "build-uglify": "uglifyjs dist/immutio.js > dist/immutio.min.js",
+    "build": "npm run clean && npm run test && npm run build-browserify && npm run build-uglify"
   },
-  "author": "Trey Griffith <trey@tgriff3.com>",
+  "author": {
+    "name": "Trey Griffith",
+    "email": "trey@tgriff3.com",
+    "url": "http://tgriff3.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/immutio/immutio-js-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/immutio/immutio-js-client/issues"
+  },
   "license": "MIT",
   "dependencies": {
+    "browser-request": "^0.3.3",
     "merge": "^1.2.0",
     "request": "^2.55.0"
-  }
+  },
+  "browser": {
+    "request": "browser-request"
+  },
+  "devDependencies": {
+    "browserify": "^9.0.8",
+    "uglify-js": "^2.4.20"
+  },
+  "keywords": [
+    "immut",
+    "immut.io",
+    "immutio",
+    "client",
+    "blob",
+    "store"
+  ]
 }

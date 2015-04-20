@@ -1,0 +1,30 @@
+{
+  "name": "immutio-client",
+  "main": "dist/immutio.min.js",
+  "version": "0.0.2",
+  "homepage": "https://github.com/immutio/immutio-js-client",
+  "authors": [
+    "Trey Griffith <trey.griffith@gmail.com>"
+  ],
+  "description": "Client for immut.io",
+  "moduleType": [
+    "globals",
+    "node"
+  ],
+  "keywords": [
+    "immut",
+    "immut.io",
+    "immutio",
+    "client",
+    "blob",
+    "store"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

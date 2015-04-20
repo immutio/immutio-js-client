@@ -8,24 +8,35 @@ See [immut.io](http://immut.io) for more information.
 Installation
 ------------
 
-Node.js/io.js:
+With npm:
 
 ```
 npm install immutio-client
 ```
 
-```
-var Immutio = require('immutio-client');
-```
-
-Browser (TODO):
+With bower:
 
 ```
 bower install immutio-client
 ````
 
+The library can be included using CommonJS module syntax, or by including the script using the
+compiled versions in `/dist`.
+
+CommonJS:
+
 ```
-<script type="text/javascript" src="/immutio-client.js"></script>
+var Immutio = require('immutio-client');
+var im = new Immutio();
+```
+
+Standalone:
+
+```
+<script type="text/javascript" src="dist/immutio-client.js"></script>
+<script>
+  var im = new Immutio();
+</script>
 ```
 
 Usage
@@ -58,13 +69,12 @@ Contributing
 1. Fork
 2. Make your changes
 3. Add tests
-4. Make a pull request
+4. Test and Build (`npm run build`, `npm run build-tests && open test/browser.html`)
+5. Make a pull request
 
 TODO
 ----
 
-1. Package up the module to be used in the browser using Browserify
-2. Add a bower.json, and add to the bower registry
-3. Add streams support
+1. Add streams support
 
 
