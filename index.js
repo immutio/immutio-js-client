@@ -36,8 +36,14 @@ Immutio.prototype.idFromUrl = function (url) {
   return id;
 };
 
-Immutio.prototype.store = function (data, callback) {
-  var blob = new Blob(null, data, this);
+Immutio.prototype.store = function (data, type, callback) {
+  if(arguments.length < 3) {
+    callback = type;
+    type = null;
+  }
+
+  var blob = new Blob({ data: data, type: type }, this);
+
   return blob.store(function (err, blob) {
     if(err) return callback(err);
     callback(null, blob.id);
@@ -45,7 +51,8 @@ Immutio.prototype.store = function (data, callback) {
 };
 
 Immutio.prototype.retrieve = function (id, callback) {
-  var blob = new Blob(id, null, this);
+  var blob = new Blob({ id: id }, this);
+
   return blob.retrieve(function (err, blob) {
     if(err) return callback(err);
     callback(null, blob.data);
