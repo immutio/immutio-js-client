@@ -31,8 +31,24 @@ im.store(json, function (err, id) {
   im.retrieve(id, function (err, retrievedObj) {
     if(err) throw err;
 
-    assert.deepEqual(JSON.parse(retrievedObj), json);
+    assert.deepEqual(retrievedObj, json);
     console.info("json retrieved.");
+  });
+});
+
+var jsonBuf = new Buffer(JSON.stringify(json));
+
+im.store(jsonBuf, "application/json", function (err, id) {
+  if(err) throw err;
+
+  assert(id);
+  console.info("json buffer stored.");
+
+  im.retrieve(id, function (err, retrievedObj) {
+    if(err) throw err;
+
+    assert.deepEqual(retrievedObj, json);
+    console.info("json buffer retrieved.");
   });
 });
 
@@ -47,7 +63,7 @@ im.store(buf, function (err, id) {
   im.retrieve(id, function (err, retrievedBuf) {
     if(err) throw err;
 
-    assert.deepEqual(new Buffer(retrievedBuf), buf);
+    assert.deepEqual(retrievedBuf, buf);
     console.info("buffer retrieved.");
   });
 });
