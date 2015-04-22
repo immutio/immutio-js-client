@@ -1,6 +1,6 @@
 {
   "name": "immutio-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Client for immut.io",
   "homepage": "https://github.com/immutio/immutio-js-client",
   "main": "index.js",

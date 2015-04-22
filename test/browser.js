@@ -1,5 +1,99 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var Blob = require('./lib/blob'),
+module.exports = require('./lib/immutio');
+
+
+},{"./lib/immutio":3}],2:[function(require,module,exports){
+var request = require('request'),
+    types = require('./types');
+
+function Blob(options, immutio) {
+  if(arguments.length < 2) {
+    immutio = options;
+    options = null;
+  }
+
+  options = options || {};
+  this.id = options.id;
+  this.data = options.data;
+  this.type = options.type;
+  this.immutio = immutio;
+}
+
+Blob.prototype.postOptions = function () {
+  var options = {
+    url: this.immutio.storeUrl(),
+    followRedirect: false,
+    body: this.body(),
+    // prevents auto-parsing of response, which is never json
+    json: false,
+    headers: {
+      'content-type': this.contentType()
+    }
+  };
+
+  return options;
+};
+
+Blob.prototype.contentType = function () {
+  return types.getType(this.data, this.type);
+};
+
+Blob.prototype.location = function (location) {
+  if(location) {
+    this.id = this.immutio.idFromUrl(location);
+  }
+
+  return this.immutio.retrieveUrl(this.id);
+};
+
+Blob.prototype.body = function (body, contentType) {
+  if(arguments.length > 0) {
+    this.type = contentType;
+    this.data = types.deserialize(body, this.type);
+    return body;
+  }
+
+  return types.serialize(this.data, this.type);
+};
+
+Blob.prototype.store = function (callback) {
+  return request.post(this.postOptions(), function (err, response) {
+    if(err) return callback(err);
+
+    if(response.statusCode === 200 || response.statusCode === 304) {
+      this.location(response.body);
+      return callback(null, this);
+    }
+
+    return callback(new Error("Unknown error while storing: " + response.statusCode + " " + response.body));
+  }.bind(this));
+};
+
+Blob.prototype.retrieve = function (callback) {
+  return request.get(this.location(), function (err, response) {
+    if(err) return callback(err);
+
+    this.body(response.body, getResponseType(response));
+
+    callback(null, this);
+  }.bind(this));
+};
+
+// slight difference between Node's IncomingMessage
+// and XMLHttpRequest
+function getResponseType(response) {
+  if(typeof response.getResponseHeader === 'function') {
+    // XMLHttpRequest
+    return response.getResponseHeader('Content-Type');
+  }
+  // Node.js
+  return response.headers['content-type'];
+}
+
+module.exports = Blob;
+
+},{"./types":4,"request":5}],3:[function(require,module,exports){
+var Blob = require('./blob'),
     merge = require('merge'),
     defaults = {
       host: "immut.io",
@@ -37,8 +131,14 @@ Immutio.prototype.idFromUrl = function (url) {
   return id;
 };
 
-Immutio.prototype.store = function (data, callback) {
-  var blob = new Blob(null, data, this);
+Immutio.prototype.store = function (data, type, callback) {
+  if(arguments.length < 3) {
+    callback = type;
+    type = null;
+  }
+
+  var blob = new Blob({ data: data, type: type }, this);
+
   return blob.store(function (err, blob) {
     if(err) return callback(err);
     callback(null, blob.id);
@@ -46,7 +146,8 @@ Immutio.prototype.store = function (data, callback) {
 };
 
 Immutio.prototype.retrieve = function (id, callback) {
-  var blob = new Blob(id, null, this);
+  var blob = new Blob({ id: id }, this);
+
   return blob.retrieve(function (err, blob) {
     if(err) return callback(err);
     callback(null, blob.data);
@@ -57,107 +158,108 @@ Immutio.Blob = Blob;
 
 module.exports = Immutio;
 
-
-},{"./lib/blob":2,"merge":13}],2:[function(require,module,exports){
+},{"./blob":2,"merge":15}],4:[function(require,module,exports){
 (function (Buffer){
-var request = require('request');
+var types = exports;
 
-function Blob(id, data, immutio) {
-  this.id = id;
-  this.data = data;
-  this.immutio = immutio;
-}
+types.text = {
+  test: function (type) {
+    return (/^text\/.+/).test(type);
+  },
+  testContent: function (content) {
+    return typeof content === 'string';
+  },
+  contentType: "text/plain",
+  deserialize: function (str) {
+    return str.toString();
+  },
+  serialize: function (str) {
+    return str.toString();
+  }
+};
 
-Blob.prototype.postOptions = function () {
-  var options = {
-    url: this.immutio.storeUrl(),
-    followRedirect: false,
-    body: this.body(),
-    // prevents auto-parsing of response, which is never json
-    json: false,
-    headers: {
-      'content-type': this.contentType()
+types.json = {
+  test: function (type) {
+    return type === this.contentType;
+  },
+  testContent: function (content) {
+    return !types.buffer.testContent(content) && !types.text.testContent(content) && typeof content === 'object';
+  },
+  contentType: "application/json",
+  deserialize: function (str) {
+    return JSON.parse(str.replace(/\\/g, ""));
+  },
+  serialize: function (json) {
+    if(Buffer.isBuffer(json)) {
+      json = json.toString('utf8');
     }
-  };
-
-  return options;
-};
-
-Blob.prototype.isJSON = function () {
-  return !this.isBuffer() && !this.isString();
-};
-
-Blob.prototype.isBuffer = function () {
-  return Buffer.isBuffer(this.data);
-};
-
-Blob.prototype.isString = function () {
-  return typeof this.data === 'string';
-};
-
-Blob.prototype.contentType = function () {
-  if(this.type) {
-    return this.type;
-  }
-
-  if(this.isJSON()) {
-   return 'application/json';
-  }
-
-  if(this.isBuffer()) {
-    return 'application/octet-stream';
-  }
-
-  return 'text/plain';
-};
-
-Blob.prototype.location = function (location) {
-  if(location) {
-    this.id = this.immutio.idFromUrl(location);
-  }
-  return this.immutio.retrieveUrl(this.id);
-};
-
-Blob.prototype.body = function (body) {
-  if(body) {
-    this.data = body;
-  }
-  if(this.isBuffer()) {
-    return this.data.toString('utf8')
-  }
-  if(this.isJSON()) {
-    return JSON.stringify(this.data);
-  }
-  return this.data;
-};
-
-Blob.prototype.store = function (callback) {
-  return request.post(this.postOptions(), function (err, response) {
-    if(err) return callback(err);
-
-    if(response.statusCode === 200 || response.statusCode === 304) {
-      this.location(response.body);
-      return callback(null, this);
+    if(typeof json === 'object') {
+      return JSON.stringify(json);
     }
-
-    return callback(new Error("Unknown error while storing: " + response.statusCode + " " + response.body));
-  }.bind(this));
+    return json;
+  }
 };
 
-Blob.prototype.retrieve = function (callback) {
-  return request.get(this.location(), function (err, response) {
-    if(err) return callback(err);
-
-    this.body(response.body);
-
-    callback(null, this);
-  }.bind(this));
+types.buffer = {
+  test: function (type) {
+    return type === this.contentType;
+  },
+  testContent: function (content) {
+    return Buffer.isBuffer(content);
+  },
+  contentType: "application/octet-stream",
+  deserialize: function (str) {
+    return new Buffer(str);
+  },
+  serialize: function (buf) {
+    return buf.toString('utf8');
+  }
 };
 
-module.exports = Blob;
+types.deserialize = function (data, contentType) {
+  var allTypes = [types.text, types.json, types.buffer];
+
+  for(var i=0; i<allTypes.length; i++) {
+    var type = allTypes[i];
+    if(type.test(contentType)) {
+      return type.deserialize(data);
+    }
+  }
+
+  return data;
+};
+
+types.serialize = function (data, contentType) {
+  var allTypes = [types.text, types.json, types.buffer];
+  contentType = types.getType(data, contentType);
+
+  for(var i=0; i<allTypes.length; i++) {
+    var type = allTypes[i];
+    if(type.test(contentType)) {
+      return type.serialize(data);
+    }
+  }
+
+  return data;
+};
+
+types.getType = function (data, contentType) {
+  if(contentType) return contentType;
+
+  var allTypes = [types.text, types.json, types.buffer];
+
+  for(var i=0; i<allTypes.length; i++) {
+    var type = allTypes[i];
+    if(type.testContent(data)) {
+      return type.contentType;
+    }
+  }
+
+  return types.text.contentType;
+};
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5,"request":3}],3:[function(require,module,exports){
+},{"buffer":7}],5:[function(require,module,exports){
 // Browser Request
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -653,7 +755,7 @@ function b64_enc (data) {
 }));
 //UMD FOOTER END
 
-},{}],4:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
@@ -1014,7 +1116,7 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":12}],5:[function(require,module,exports){
+},{"util/":14}],7:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -2347,7 +2449,7 @@ function decodeUtf8Char (str) {
   }
 }
 
-},{"base64-js":6,"ieee754":7,"is-array":8}],6:[function(require,module,exports){
+},{"base64-js":8,"ieee754":9,"is-array":10}],8:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -2473,7 +2575,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	exports.fromByteArray = uint8ToBase64
 }(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 exports.read = function(buffer, offset, isLE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -2559,7 +2661,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 
 /**
  * isArray
@@ -2594,7 +2696,7 @@ module.exports = isArray || function (val) {
   return !! val && '[object Array]' == str.call(val);
 };
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2619,7 +2721,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -2679,14 +2781,14 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -3276,7 +3378,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":11,"_process":10,"inherits":9}],13:[function(require,module,exports){
+},{"./support/isBuffer":13,"_process":12,"inherits":11}],15:[function(require,module,exports){
 /*!
  * @name JavaScript/NodeJS Merge v1.2.0
  * @author yeikos
@@ -3452,7 +3554,7 @@ function hasOwnProperty(obj, prop) {
 	}
 
 })(typeof module === 'object' && module && typeof module.exports === 'object' && module.exports);
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (Buffer){
 var Immutio = require('../index');
 var im = new Immutio();
@@ -3487,8 +3589,24 @@ im.store(json, function (err, id) {
   im.retrieve(id, function (err, retrievedObj) {
     if(err) throw err;
 
-    assert.deepEqual(JSON.parse(retrievedObj), json);
+    assert.deepEqual(retrievedObj, json);
     console.info("json retrieved.");
+  });
+});
+
+var jsonBuf = new Buffer(JSON.stringify(json));
+
+im.store(jsonBuf, "application/json", function (err, id) {
+  if(err) throw err;
+
+  assert(id);
+  console.info("json buffer stored.");
+
+  im.retrieve(id, function (err, retrievedObj) {
+    if(err) throw err;
+
+    assert.deepEqual(retrievedObj, json);
+    console.info("json buffer retrieved.");
   });
 });
 
@@ -3503,10 +3621,10 @@ im.store(buf, function (err, id) {
   im.retrieve(id, function (err, retrievedBuf) {
     if(err) throw err;
 
-    assert.deepEqual(new Buffer(retrievedBuf), buf);
+    assert.deepEqual(retrievedBuf, buf);
     console.info("buffer retrieved.");
   });
 });
 
 }).call(this,require("buffer").Buffer)
-},{"../index":1,"assert":4,"buffer":5}]},{},[14]);
+},{"../index":1,"assert":6,"buffer":7}]},{},[16]);

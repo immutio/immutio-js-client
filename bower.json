@@ -1,7 +1,7 @@
 {
   "name": "immutio-client",
   "main": "dist/immutio.min.js",
-  "version": "0.0.2",
+  "version": "0.1.1",
   "homepage": "https://github.com/immutio/immutio-js-client",
   "authors": [
     "Trey Griffith <trey.griffith@gmail.com>"
